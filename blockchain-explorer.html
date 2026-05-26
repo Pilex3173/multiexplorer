@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChainSight — Multichain Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #050a0f;
+    --bg2: #090e16;
+    --surface: #0d1520;
+    --surface2: #111c2d;
+    --border: rgba(0,200,150,0.12);
+    --border2: rgba(0,200,150,0.25);
+    --green: #00c896;
+    --green2: #00ffbd;
+    --blue: #0a84ff;
+    --purple: #a78bfa;
+    --amber: #f59e0b;
+    --red: #f43f5e;
+    --text: #e2f0ff;
+    --muted: #4a6480;
+    --muted2: #7a98b8;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,200,150,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,200,150,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Glow orbs */
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .orb1 { width: 500px; height: 500px; background: rgba(0,200,150,0.06); top: -100px; right: -100px; }
+  .orb2 { width: 400px; height: 400px; background: rgba(10,132,255,0.05); bottom: 200px; left: -100px; }
+  .orb3 { width: 300px; height: 300px; background: rgba(167,139,250,0.05); top: 50%; left: 40%; }
+
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 48px;
+    height: 64px;
+    background: rgba(5,10,15,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: var(--green);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .logo-icon::before {
+    content: '';
+    position: absolute;
+    width: 14px; height: 14px;
+    border: 2px solid #050a0f;
+    border-radius: 3px;
+    transform: rotate(45deg);
+  }
+
+  .logo span { color: var(--green); }
+
+  nav ul {
+    display: flex;
+    list-style: none;
+    gap: 32px;
+    align-items: center;
+  }
+
+  nav ul a {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted2);
+    text-decoration: none;
+    letter-spacing: 0.05em;
+    transition: color 0.2s;
+  }
+
+  nav ul a:hover { color: var(--green); }
+
+  .nav-cta {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 20px;
+    background: transparent;
+    border: 1px solid var(--green);
+    color: var(--green);
+    border-radius: 6px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+
+  .nav-cta:hover {
+    background: var(--green);
+    color: #050a0f;
+  }
+
+  /* Hero */
+  .hero {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 80px 24px 60px;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border: 1px solid var(--border2);
+    border-radius: 100px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--green);
+    letter-spacing: 0.1em;
+    margin-bottom: 32px;
+    background: rgba(0,200,150,0.05);
+    animation: fadeDown 0.6s ease both;
+  }
+
+  .badge-dot {
+    width: 6px; height: 6px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.4); }
+  }
+
+  h1 {
+    font-size: clamp(48px, 8vw, 96px);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -3px;
+    margin-bottom: 24px;
+    animation: fadeDown 0.6s 0.1s ease both;
+  }
+
+  h1 .accent { color: var(--green); }
+  h1 .line2 { display: block; color: var(--muted2); font-weight: 400; }
+
+  .hero-sub {
+    font-family: var(--mono);
+    font-size: 14px;
+    color: var(--muted2);
+    line-height: 1.8;
+    max-width: 520px;
+    margin-bottom: 48px;
+    animation: fadeDown 0.6s 0.2s ease both;
+  }
+
+  /* Search bar */
+  .search-wrap {
+    width: 100%;
+    max-width: 680px;
+    margin-bottom: 24px;
+    animation: fadeDown 0.6s 0.3s ease both;
+  }
+
+  .search-bar {
+    display: flex;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    padding: 6px 6px 6px 20px;
+    gap: 12px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .search-bar:focus-within {
+    border-color: var(--green);
+    box-shadow: 0 0 0 3px rgba(0,200,150,0.08);
+  }
+
+  .search-bar input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--text);
+    letter-spacing: 0.02em;
+  }
+
+  .search-bar input::placeholder { color: var(--muted); }
+
+  .chain-select {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted2);
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .search-btn {
+    padding: 10px 20px;
+    background: var(--green);
+    color: #050a0f;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .search-btn:hover { background: var(--green2); transform: translateY(-1px); }
+
+  .search-hints {
+    display: flex;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .hint { cursor: pointer; transition: color 0.2s; }
+  .hint:hover { color: var(--green); }
+
+  /* Chain pills */
+  .chains-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 48px;
+    animation: fadeUp 0.6s 0.5s ease both;
+  }
+
+  .chain-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted2);
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+  }
+
+  .chain-pill:hover { border-color: var(--border2); color: var(--text); }
+  .chain-pill.active { border-color: var(--green); color: var(--green); background: rgba(0,200,150,0.06); }
+
+  .chain-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* Stats section */
+  .stats {
+    position: relative;
+    z-index: 1;
+    padding: 0 48px 80px;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .stat-cell {
+    background: var(--bg2);
+    padding: 32px;
+    position: relative;
+  }
+
+  .stat-cell::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 32px; right: 32px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--green), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .stat-cell:hover::after { opacity: 0.4; }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .stat-value {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .stat-value .unit { font-size: 18px; color: var(--green); }
+
+  .stat-change {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--green);
+  }
+
+  .stat-change.down { color: var(--red); }
+
+  /* Live feed */
+  .section {
+    position: relative;
+    z-index: 1;
+    padding: 0 48px 80px;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .section-title {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .live-dot {
+    width: 8px; height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+  }
+
+  .view-all {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--green);
+    text-decoration: none;
+    letter-spacing: 0.06em;
+    padding: 6px 14px;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    transition: all 0.2s;
+  }
+
+  .view-all:hover { background: rgba(0,200,150,0.08); }
+
+  /* Table */
+  .tx-table {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .tx-row {
+    display: grid;
+    grid-template-columns: 40px 1fr 1fr 1fr 120px 100px;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .tx-row:last-child { border-bottom: none; }
+  .tx-row:hover { background: var(--surface2); }
+
+  .tx-row.header {
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tx-row.header:hover { background: var(--bg2); }
+
+  .chain-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .tx-hash { color: var(--blue); }
+  .tx-hash:hover { color: var(--green2); cursor: pointer; }
+
+  .addr { color: var(--muted2); }
+  .addr span { color: var(--text); }
+
+  .tx-val { color: var(--green); font-weight: 700; }
+  .tx-time { color: var(--muted); }
+
+  .status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+  }
+
+  .status-ok { background: rgba(0,200,150,0.1); color: var(--green); border: 1px solid rgba(0,200,150,0.2); }
+  .status-pending { background: rgba(245,158,11,0.1); color: var(--amber); border: 1px solid rgba(245,158,11,0.2); }
+  .status-fail { background: rgba(244,63,94,0.1); color: var(--red); border: 1px solid rgba(244,63,94,0.2); }
+
+  .row-num { color: var(--muted); font-size: 11px; }
+
+  /* Chain cards */
+  .chains-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    margin-bottom: 80px;
+  }
+
+  .chain-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .chain-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .chain-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .chain-card:hover::before { opacity: 1; }
+
+  .eth::before { background: linear-gradient(90deg, #627eea, #a78bfa); }
+  .bnb::before { background: linear-gradient(90deg, #f0b90b, #f59e0b); }
+  .sol::before { background: linear-gradient(90deg, #9945ff, #14f195); }
+  .avax::before { background: linear-gradient(90deg, #e84142, #ff6b6b); }
+  .arb::before { background: linear-gradient(90deg, #12aaff, #0a84ff); }
+  .op::before { background: linear-gradient(90deg, #ff0420, #f43f5e); }
+
+  .chain-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .chain-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 800;
+    font-family: var(--sans);
+  }
+
+  .chain-status {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--green);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    letter-spacing: 0.06em;
+  }
+
+  .chain-name {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    letter-spacing: -0.3px;
+  }
+
+  .chain-full { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 20px; }
+
+  .chain-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .chain-metric { }
+  .metric-label { font-family: var(--mono); font-size: 10px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px; }
+  .metric-val { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+  .metric-sub { font-family: var(--mono); font-size: 10px; color: var(--muted2); margin-top: 1px; }
+
+  /* Mini sparkline */
+  .sparkline { width: 100%; height: 32px; margin-top: 16px; }
+
+  /* Features */
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  .feature-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    transition: border-color 0.2s;
+  }
+
+  .feature-card:hover { border-color: var(--border2); }
+
+  .feature-icon {
+    width: 44px; height: 44px;
+    background: rgba(0,200,150,0.08);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+
+  .feature-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .feature-desc { font-family: var(--mono); font-size: 12px; color: var(--muted2); line-height: 1.8; }
+
+  /* CTA */
+  .cta-section {
+    position: relative;
+    z-index: 1;
+    padding: 0 48px 120px;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  .cta-inner {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 80px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cta-inner::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 50%; transform: translateX(-50%);
+    width: 400px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--green), transparent);
+  }
+
+  .cta-title { font-size: 48px; font-weight: 800; letter-spacing: -2px; margin-bottom: 16px; }
+  .cta-sub { font-family: var(--mono); font-size: 13px; color: var(--muted2); margin-bottom: 40px; line-height: 1.8; }
+
+  .cta-btns { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+
+  .btn-primary {
+    padding: 14px 32px;
+    background: var(--green);
+    color: #050a0f;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: all 0.2s;
+  }
+
+  .btn-primary:hover { background: var(--green2); transform: translateY(-2px); }
+
+  .btn-outline {
+    padding: 14px 32px;
+    background: transparent;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: all 0.2s;
+  }
+
+  .btn-outline:hover { border-color: var(--border2); }
+
+  /* Footer */
+  footer {
+    position: relative;
+    z-index: 1;
+    border-top: 1px solid var(--border);
+    padding: 40px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .footer-links { display: flex; gap: 24px; }
+  .footer-links a { color: var(--muted); text-decoration: none; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--green); }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 3px; }
+
+  @media (max-width: 768px) {
+    nav { padding: 0 20px; }
+    nav ul { display: none; }
+    .stats, .section, .cta-section { padding-left: 20px; padding-right: 20px; }
+    .tx-row { grid-template-columns: 1fr 1fr 1fr; font-size: 11px; }
+    .tx-row .row-num, .tx-row .tx-time { display: none; }
+    .cta-inner { padding: 40px 24px; }
+    .cta-title { font-size: 32px; }
+    footer { flex-direction: column; gap: 16px; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+
+<nav>
+  <a href="#" class="logo">
+    <div class="logo-icon"></div>
+    Chain<span>Sight</span>
+  </a>
+  <ul>
+    <li><a href="#chains">Chains</a></li>
+    <li><a href="#transactions">Transactions</a></li>
+    <li><a href="#blocks">Blocks</a></li>
+    <li><a href="#tokens">Tokens</a></li>
+    <li><a href="#api">API</a></li>
+  </ul>
+  <a href="#" class="nav-cta">CONNECT WALLET</a>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-badge">
+    <span class="badge-dot"></span>
+    LIVE — 14 CHAINS ACTIVE
+  </div>
+  <h1>
+    Explore Every<br>
+    <span class="accent">Block.</span>
+    <span class="line2">Every Chain.</span>
+  </h1>
+  <p class="hero-sub">
+    Real-time multichain explorer for Ethereum, BNB Chain, Solana,<br>
+    Avalanche, Arbitrum, dan 9 chain lainnya dalam satu dashboard.
+  </p>
+
+  <div class="search-wrap">
+    <div class="search-bar">
+      <select class="chain-select">
+        <option>ALL CHAINS</option>
+        <option>ETHEREUM</option>
+        <option>BNB CHAIN</option>
+        <option>SOLANA</option>
+        <option>AVALANCHE</option>
+        <option>ARBITRUM</option>
+        <option>OPTIMISM</option>
+      </select>
+      <input type="text" placeholder="Cari alamat, tx hash, block, atau token..." />
+      <button class="search-btn">SEARCH →</button>
+    </div>
+  </div>
+
+  <div class="search-hints">
+    <span>Coba: </span>
+    <span class="hint">0x742d...a4b2</span>
+    <span class="hint">block #19,847,233</span>
+    <span class="hint">USDC token</span>
+    <span class="hint">Vitalik.eth</span>
+  </div>
+
+  <div class="chains-row">
+    <div class="chain-pill active">
+      <span class="chain-dot" style="background:#627eea"></span>ETH
+    </div>
+    <div class="chain-pill">
+      <span class="chain-dot" style="background:#f0b90b"></span>BNB
+    </div>
+    <div class="chain-pill">
+      <span class="chain-dot" style="background:#9945ff"></span>SOL
+    </div>
+    <div class="chain-pill">
+      <span class="chain-dot" style="background:#e84142"></span>AVAX
+    </div>
+    <div class="chain-pill">
+      <span class="chain-dot" style="background:#12aaff"></span>ARB
+    </div>
+    <div class="chain-pill">
+      <span class="chain-dot" style="background:#ff0420"></span>OP
+    </div>
+    <div class="chain-pill">
+      <span class="chain-dot" style="background:#8247e5"></span>MATIC
+    </div>
+    <div class="chain-pill">
+      <span class="chain-dot" style="background:#00ffa3"></span>+7 MORE
+    </div>
+  </div>
+</section>
+
+<!-- Stats -->
+<div class="stats">
+  <div class="stats-grid">
+    <div class="stat-cell">
+      <div class="stat-label">TOTAL TRANSACTIONS (24H)</div>
+      <div class="stat-value">142<span class="unit">M</span></div>
+      <div class="stat-change">↑ 8.4% vs yesterday</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">ACTIVE WALLETS</div>
+      <div class="stat-value">4.7<span class="unit">M</span></div>
+      <div class="stat-change">↑ 2.1% vs yesterday</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">TOTAL VALUE LOCKED</div>
+      <div class="stat-value">$89<span class="unit">B</span></div>
+      <div class="stat-change down">↓ 1.2% vs yesterday</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">CHAINS MONITORED</div>
+      <div class="stat-value">14<span class="unit"> ⬡</span></div>
+      <div class="stat-change">ALL SYSTEMS ONLINE</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">AVG GAS (ETH)</div>
+      <div class="stat-value">12<span class="unit"> GWEI</span></div>
+      <div class="stat-change">↓ 3.5% — LOW</div>
+    </div>
+  </div>
+</div>
+
+<!-- Chain Cards -->
+<div class="section" id="chains">
+  <div class="section-header">
+    <div class="section-title">
+      <span class="live-dot"></span>
+      Chain Overview
+    </div>
+    <a href="#" class="view-all">VIEW ALL →</a>
+  </div>
+
+  <div class="chains-grid">
+
+    <!-- ETH -->
+    <div class="chain-card eth">
+      <div class="chain-card-top">
+        <div class="chain-icon" style="background:rgba(98,126,234,0.15);color:#627eea;">Ξ</div>
+        <div class="chain-status"><span class="live-dot" style="width:5px;height:5px;"></span>ONLINE</div>
+      </div>
+      <div class="chain-name">Ethereum</div>
+      <div class="chain-full">MAINNET · CHAIN ID 1</div>
+      <div class="chain-metrics">
+        <div class="chain-metric">
+          <div class="metric-label">BLOCK HEIGHT</div>
+          <div class="metric-val">19,847,233</div>
+          <div class="metric-sub">~12s avg</div>
+        </div>
+        <div class="chain-metric">
+          <div class="metric-label">TPS</div>
+          <div class="metric-val">15.3</div>
+          <div class="metric-sub">tx/second</div>
+        </div>
+        <div class="chain-metric">
+          <div class="metric-label">GAS PRICE</div>
+          <div class="metric-val">12 Gwei</div>
+          <div class="metric-sub">base fee</div>
+        </div>
+        <div class="chain-metric">
+          <div class="metric-label">TX (24H)</div>
+          <div class="metric-val">1.2M</div>
+          <div class="metric-sub">↑ 5.4%</div>
+        </div>
+      </div>
+      <svg class="sparkline" viewBox="0 0 240 32">
+        <polyline points="0,28 30,20 60,24 90,12 120,16 150,8 180,14 210,6 240,10" fill="none" stroke="#627eea" stroke-width="1.5" opacity="0.7"/>
+        <polyline points="0,32 0,28 30,20 60,24 90,12 120,16 150,8 180,14 210,6 240,10 240,32" fill="rgba(98,126,234,0.08)"/>
+      </svg>
+    </div>
+
+    <!-- BNB -->
+    <div class="chain-card bnb">
+      <div class="chain-card-top">
+        <div class="chain-icon" style="background:rgba(240,185,11,0.1);color:#f0b90b;">⬡</div>
+        <div class="chain-status"><span class="live-dot" style="width:5px;height:5px;"></span>ONLINE</div>
+      </div>
+      <div class="chain-name">BNB Chain</div>
+      <div class="chain-full">MAINNET · CHAIN ID 56</div>
+      <div class="chain-metrics">
+        <div class="chain-metric">
+          <div class="metric-label">BLOCK HEIGHT</div>
+          <div class="metric-val">37,412,091</div>
+          <div class="metric-sub">~3s avg</div>
+        </div>
+        <div class="chain-metric">
+          <div class="metric-label">TPS</div>
+          <div class="metric-val">72.8</div>
+          <div class="metric-sub">tx/second</div>
+        </div>
+        <div class="chain-metric">
+          <div class="metric-label">GAS PRICE</div>
+          <div class="metric-val">3 Gwei</div>
+          <div class="metric-sub">base fee</div>
+        </div>
+        <div class="chain-metric">
+          <div class="metric-label">TX (24H)</div>
+          <div class="metric-val">4.8M</div>
+          <div class="metric-sub">↑ 11.2%</div>
+        </div>
+      </div>
+      <svg class="sparkline" viewBox="0 0 240 32">
+        <polyline points="0,20 30,14 60,18 90,10 120,8 150,12 180,6 210,10 240,4" fill="none" stroke="#f0b90b" stroke-width="1.5" opacity="0.7"/>
+        <polyline points="0,32 0,20 30,14 60,18 90,10 120,8 150,12 180,6 210,10 240,4 240,32" fill="rgba(240,185,11,0.06)"/>
+      </svg>
+    </div>
+
+    <!-- SOL -->
+    <div class="chain-card sol">
+      <div class="chain-card-top">
+        <div class="chain-icon" style="background:rgba(153,69,255,0.12);color:#9945ff;">◎</div>
+        <div class="chain-status"><span class="live-dot" style="width:5px;height:5px;"></span>ONLINE</div>
+      </div>
+      <div class="chain-name">Solana</div>
+      <div class="chain-full">MAINNET-BETA · SLOT 264M</div>
+      <div class="chain-metrics">
+        <div class="chain-metric">
+          <div class="metric-label">SLOT HEIGHT</div>
+          <div class="metric-val">264,721,048</div>
+          <div class="metric-sub">~400ms avg</div>
+        </div>
+        <div class="chain-metric">
+          <div class="metric-label">TPS</div>
+          <div class="metric-val">4,200</div>
+          <div class="metric-sub">tx/second</div>
+        </div>
+        <div class="chain-metric">
+          <div class="metric-label">FEE</div>
+          <div class="metric-val">0.00005</div>
+          <div class="metric-sub">SOL avg</div>
+        </div>
+        <div class="chain-metric">
+          <div class="metric-label">TX (24H)</div>
+          <div class="metric-val">52M</div>
+          <div class="metric-sub">↑ 18.7%</div>
+        </div>
+      </div>
+      <svg class="sparkline" viewBox="0 0 240 32">
+        <polyline points="0,24 30,18 60,22 90,8 120,12 150,4 180,8 210,2 240,6" fill="none" stroke="#14f195" stroke-width="1.5" opacity="0.7"/>
+        <polyline points="0,32 0,24 30,18 60,22 90,8 120,12 150,4 180,8 210,2 240,6 240,32" fill="rgba(20,241,149,0.06)"/>
+      </svg>
+    </div>
+
+    <!-- AVAX -->
+    <div class="chain-card avax">
+      <div class="chain-card-top">
+        <div class="chain-icon" style="background:rgba(232,65,66,0.1);color:#e84142;">▲</div>
+        <div class="chain-status"><span class="live-dot" style="width:5px;height:5px;"></span>ONLINE</div>
+      </div>
+      <div class="chain-name">Avalanche</div>
+      <div class="chain-full">C-CHAIN · CHAIN ID 43114</div>
+      <div class="chain-metrics">
+        <div class="chain-metric">
+          <div class="metric-label">BLOCK HEIGHT</div>
+          <div class="metric-val">44,891,207</div>
+          <div class="metric-sub">~2s avg</div>
+        </div>
+        <div class="chain-metric">
+          <div class="metric-label">TPS</div>
+          <div class="metric-val">34.6</div>
+          <div class="metric-sub">tx/second</div>
+        </div>
+        <div class="chain-metric">
+          <div class="metric-label">GAS PRICE</div>
+          <div class="metric-val">25 nAVAX</div>
+          <div class="metric-sub">base fee</div>
+        </div>
+        <div class="chain-metric">
+          <div class="metric-label">TX (24H)</div>
+          <div class="metric-val">892K</div>
+          <div class="metric-sub">↓ 2.3%</div>
+        </div>
+      </div>
+      <svg class="sparkline" viewBox="0 0 240 32">
+        <polyline points="0,16 30,22 60,14 90,18 120,10 150,16 180,12 210,20 240,14" fill="none" stroke="#e84142" stroke-width="1.5" opacity="0.7"/>
+        <polyline points="0,32 0,16 30,22 60,14 90,18 120,10 150,16 180,12 210,20 240,14 240,32" fill="rgba(232,65,66,0.06)"/>
+      </svg>
+    </div>
+
+    <!-- ARB -->
+    <div class="chain-card arb">
+      <div class="chain-card-top">
+        <div class="chain-icon" style="background:rgba(18,170,255,0.1);color:#12aaff;">⟁</div>
+        <div class="chain-status"><span class="live-dot" style="width:5px;height:5px;"></span>ONLINE</div>
+      </div>
+      <div class="chain-name">Arbitrum</div>
+      <div class="chain-full">ONE · CHAIN ID 42161</div>
+      <div class="chain-metrics">
+        <div class="chain-metric">
+          <div class="metric-label">BLOCK HEIGHT</div>
+          <div class="metric-val">194,238,471</div>
+          <div class="metric-sub">~0.25s avg</div>
+        </div>
+        <div class="chain-metric">
+          <div class="metric-label">TPS</div>
+          <div class="metric-val">28.4</div>
+          <div class="metric-sub">tx/second</div>
+        </div>
+        <div class="chain-metric">
+          <div class="metric-label">GAS PRICE</div>
+          <div class="metric-val">0.1 Gwei</div>
+          <div class="metric-sub">base fee</div>
+        </div>
+        <div class="chain-metric">
+          <div class="metric-label">TX (24H)</div>
+          <div class="metric-val">2.1M</div>
+          <div class="metric-sub">↑ 7.8%</div>
+        </div>
+      </div>
+      <svg class="sparkline" viewBox="0 0 240 32">
+        <polyline points="0,22 30,16 60,20 90,10 120,14 150,6 180,10 210,4 240,8" fill="none" stroke="#12aaff" stroke-width="1.5" opacity="0.7"/>
+        <polyline points="0,32 0,22 30,16 60,20 90,10 120,14 150,6 180,10 210,4 240,8 240,32" fill="rgba(18,170,255,0.06)"/>
+      </svg>
+    </div>
+
+    <!-- OP -->
+    <div class="chain-card op">
+      <div class="chain-card-top">
+        <div class="chain-icon" style="background:rgba(255,4,32,0.1);color:#ff0420;">◈</div>
+        <div class="chain-status"><span class="live-dot" style="width:5px;height:5px;"></span>ONLINE</div>
+      </div>
+      <div class="chain-name">Optimism</div>
+      <div class="chain-full">MAINNET · CHAIN ID 10</div>
+      <div class="chain-metrics">
+        <div class="chain-metric">
+          <div class="metric-label">BLOCK HEIGHT</div>
+          <div class="metric-val">118,447,912</div>
+          <div class="metric-sub">~2s avg</div>
+        </div>
+        <div class="chain-metric">
+          <div class="metric-label">TPS</div>
+          <div class="metric-val">12.7</div>
+          <div class="metric-sub">tx/second</div>
+        </div>
+        <div class="chain-metric">
+          <div class="metric-label">GAS PRICE</div>
+          <div class="metric-val">0.04 Gwei</div>
+          <div class="metric-sub">base fee</div>
+        </div>
+        <div class="chain-metric">
+          <div class="metric-label">TX (24H)</div>
+          <div class="metric-val">674K</div>
+          <div class="metric-sub">↑ 4.2%</div>
+        </div>
+      </div>
+      <svg class="sparkline" viewBox="0 0 240 32">
+        <polyline points="0,26 30,20 60,24 90,16 120,20 150,12 180,16 210,10 240,14" fill="none" stroke="#ff0420" stroke-width="1.5" opacity="0.7"/>
+        <polyline points="0,32 0,26 30,20 60,24 90,16 120,20 150,12 180,16 210,10 240,14 240,32" fill="rgba(255,4,32,0.05)"/>
+      </svg>
+    </div>
+
+  </div>
+</div>
+
+<!-- Live Transactions -->
+<div class="section" id="transactions">
+  <div class="section-header">
+    <div class="section-title">
+      <span class="live-dot"></span>
+      Latest Transactions
+    </div>
+    <a href="#" class="view-all">VIEW ALL →</a>
+  </div>
+
+  <div class="tx-table">
+    <div class="tx-row header">
+      <div>#</div>
+      <div>TX HASH</div>
+      <div>FROM → TO</div>
+      <div>VALUE</div>
+      <div>CHAIN</div>
+      <div>STATUS</div>
+    </div>
+
+    <div class="tx-row">
+      <div class="row-num">1</div>
+      <div class="tx-hash">0x4f2a...c19e</div>
+      <div class="addr"><span>0x742d...</span> → <span>0x3fe8...</span></div>
+      <div class="tx-val">4.820 ETH</div>
+      <div><span class="chain-badge" style="background:rgba(98,126,234,0.1);color:#627eea;">Ξ ETH</span></div>
+      <div><span class="status-badge status-ok">SUCCESS</span></div>
+    </div>
+
+    <div class="tx-row">
+      <div class="row-num">2</div>
+      <div class="tx-hash">5yPT...aQ2R</div>
+      <div class="addr"><span>Gh7k...</span> → <span>DqmN...</span></div>
+      <div class="tx-val">12,400 USDC</div>
+      <div><span class="chain-badge" style="background:rgba(153,69,255,0.1);color:#9945ff;">◎ SOL</span></div>
+      <div><span class="status-badge status-ok">SUCCESS</span></div>
+    </div>
+
+    <div class="tx-row">
+      <div class="row-num">3</div>
+      <div class="tx-hash">0x8b3c...7d4f</div>
+      <div class="addr"><span>0xbca1...</span> → <span>0x91ef...</span></div>
+      <div class="tx-val">2,100 BNB</div>
+      <div><span class="chain-badge" style="background:rgba(240,185,11,0.1);color:#f0b90b;">⬡ BNB</span></div>
+      <div><span class="status-badge status-pending">PENDING</span></div>
+    </div>
+
+    <div class="tx-row">
+      <div class="row-num">4</div>
+      <div class="tx-hash">0x1f8e...b23a</div>
+      <div class="addr"><span>0xd4ac...</span> → <span>0x56f2...</span></div>
+      <div class="tx-val">0.012 AVAX</div>
+      <div><span class="chain-badge" style="background:rgba(232,65,66,0.1);color:#e84142;">▲ AVAX</span></div>
+      <div><span class="status-badge status-ok">SUCCESS</span></div>
+    </div>
+
+    <div class="tx-row">
+      <div class="row-num">5</div>
+      <div class="tx-hash">0x9a7f...e41b</div>
+      <div class="addr"><span>0xf012...</span> → <span>0x8c34...</span></div>
+      <div class="tx-val">88,000 ARB</div>
+      <div><span class="chain-badge" style="background:rgba(18,170,255,0.1);color:#12aaff;">⟁ ARB</span></div>
+      <div><span class="status-badge status-ok">SUCCESS</span></div>
+    </div>
+
+    <div class="tx-row">
+      <div class="row-num">6</div>
+      <div class="tx-hash">0x3c2d...a98e</div>
+      <div class="addr"><span>0x2ef1...</span> → Uniswap V3</div>
+      <div class="tx-val">0 ETH</div>
+      <div><span class="chain-badge" style="background:rgba(98,126,234,0.1);color:#627eea;">Ξ ETH</span></div>
+      <div><span class="status-badge status-fail">FAILED</span></div>
+    </div>
+
+    <div class="tx-row">
+      <div class="row-num">7</div>
+      <div class="tx-hash">0x7b4e...f301</div>
+      <div class="addr"><span>0xa834...</span> → <span>0xc921...</span></div>
+      <div class="tx-val">550 OP</div>
+      <div><span class="chain-badge" style="background:rgba(255,4,32,0.1);color:#ff0420;">◈ OP</span></div>
+      <div><span class="status-badge status-ok">SUCCESS</span></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Features -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-title">Kenapa ChainSight?</div>
+  </div>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <div class="feature-title">Real-time Updates</div>
+      <div class="feature-desc">Data blok dan transaksi diupdate setiap detik via WebSocket. Tidak ada refresh manual yang diperlukan.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔗</div>
+      <div class="feature-title">14 Chain Terintegrasi</div>
+      <div class="feature-desc">Ethereum, BNB Chain, Solana, Avalanche, Arbitrum, Optimism, Polygon, Base, dan 6 lainnya dalam satu platform.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔍</div>
+      <div class="feature-title">Advanced Search</div>
+      <div class="feature-desc">Cari berdasarkan alamat wallet, tx hash, nama ENS/SNS, token address, atau block number di semua chain sekaligus.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">Analytics & Charts</div>
+      <div class="feature-desc">Visualisasi data gas, volume transaksi, whale movements, dan token metrics dengan grafik interaktif.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🛡️</div>
+      <div class="feature-title">Contract Verification</div>
+      <div class="feature-desc">Verifikasi source code smart contract, lihat ABI, dan interaksi langsung dengan contract yang terverifikasi.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔌</div>
+      <div class="feature-title">Public API</div>
+      <div class="feature-desc">REST API dan GraphQL endpoint gratis. 100,000 request/bulan. Rate limit fleksibel untuk developer dan proyek blockchain.</div>
+    </div>
+  </div>
+</div>
+
+<!-- CTA -->
+<div class="cta-section">
+  <div class="cta-inner">
+    <div class="cta-title">Mulai Eksplorasi<br><span style="color:var(--green)">Blockchain</span> Sekarang</div>
+    <p class="cta-sub">
+      Gratis selamanya untuk penggunaan dasar.<br>
+      Upgrade ke Pro untuk fitur analytics lanjutan dan API rate limit yang lebih tinggi.
+    </p>
+    <div class="cta-btns">
+      <button class="btn-primary">MULAI GRATIS →</button>
+      <button class="btn-outline">LIHAT DOKUMENTASI</button>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer>
+  <div style="font-weight:700;color:var(--muted2)">ChainSight © 2026</div>
+  <div class="footer-links">
+    <a href="#">Docs</a>
+    <a href="#">API</a>
+    <a href="#">Status</a>
+    <a href="#">GitHub</a>
+    <a href="#">Twitter</a>
+    <a href="#">Privacy</a>
+  </div>
+  <div>Built for the decentralized web</div>
+</footer>
+
+<script>
+  // Chain pill toggle
+  document.querySelectorAll('.chain-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.chain-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+    });
+  });
+
+  // Search hints
+  document.querySelectorAll('.hint').forEach(hint => {
+    hint.addEventListener('click', () => {
+      document.querySelector('.search-bar input').value = hint.textContent;
+    });
+  });
+
+  // Animate stats on load
+  const statVals = document.querySelectorAll('.stat-value');
+  statVals.forEach(el => {
+    el.style.animation = 'fadeDown 0.6s ease both';
+  });
+
+  // Live row highlight
+  let txRows = document.querySelectorAll('.tx-row:not(.header)');
+  let idx = 0;
+  setInterval(() => {
+    txRows.forEach(r => r.style.background = '');
+    if (txRows[idx]) {
+      txRows[idx].style.background = 'rgba(0,200,150,0.04)';
+      setTimeout(() => { if(txRows[idx]) txRows[idx].style.background = ''; }, 800);
+    }
+    idx = (idx + 1) % txRows.length;
+  }, 1500);
+</script>
+
+</body>
+</html>
