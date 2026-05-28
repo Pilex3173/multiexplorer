@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChainSight — Multichain Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f6fa;--bg2:#eef0f6;--white:#ffffff;
+  --border:#e2e5ef;--border2:#c8cdde;
+  --text:#0d1117;--muted:#6b7280;--muted2:#9ca3af;
+  --accent:#5263ff;--accent2:#3d4fe0;--accent-bg:#eef0ff;
+  --cosmos:#6f42c1;--cosmos-bg:#f3eeff;--cosmos2:#5a31a8;
+  --testnet:#d97706;--testnet-bg:#fffbeb;--testnet2:#b45309;
+  --green:#059669;--green-bg:#ecfdf5;
+  --red:#dc2626;--red-bg:#fef2f2;
+  --amber:#d97706;--amber-bg:#fffbeb;
+  --purple:#7c3aed;--purple-bg:#f5f3ff;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,0.08),0 2px 6px rgba(0,0,0,0.04);
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;font-size:14px;line-height:1.5}
+
+/* TOP BAR */
+.topbar{background:var(--accent);color:#fff;font-family:var(--mono);font-size:11px;letter-spacing:0.04em;padding:6px 0;display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap}
+.topbar-item{display:flex;align-items:center;gap:5px;opacity:0.9}
+.topbar-val{font-weight:500;opacity:1}
+.topbar-sep{opacity:0.3}
+
+/* NAV */
+nav{background:var(--white);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:200;box-shadow:var(--shadow)}
+.nav-inner{max-width:1360px;margin:0 auto;padding:0 20px;height:54px;display:flex;align-items:center;gap:16px}
+.logo{font-family:var(--sans);font-weight:600;font-size:17px;color:var(--text);text-decoration:none;display:flex;align-items:center;gap:7px;flex-shrink:0}
+.logo-mark{width:27px;height:27px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center}
+.logo-mark svg{width:14px;height:14px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round}
+
+/* NETWORK GROUP SWITCHER */
+.net-group-wrap{display:flex;gap:2px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px;flex-shrink:0}
+.net-group-btn{padding:4px 12px;border-radius:5px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;border:none;background:none;transition:all 0.15s;letter-spacing:0.03em;white-space:nowrap}
+.net-group-btn:hover{color:var(--text)}
+.net-group-btn.active-main{background:var(--white);color:var(--accent);box-shadow:var(--shadow)}
+.net-group-btn.active-cosmos{background:var(--white);color:var(--cosmos);box-shadow:var(--shadow)}
+.net-group-btn.active-testnet{background:var(--white);color:var(--testnet);box-shadow:var(--shadow)}
+
+/* CHAIN TABS */
+.chain-tabs-wrap{flex:1;min-width:0;overflow:hidden}
+.chain-tabs{display:flex;gap:2px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px;overflow-x:auto;scrollbar-width:none}
+.chain-tabs::-webkit-scrollbar{display:none}
+.chain-tab{padding:4px 10px;border-radius:5px;font-size:11px;font-weight:500;color:var(--muted);cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:5px;border:none;background:none;white-space:nowrap;flex-shrink:0}
+.chain-tab .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.chain-tab:hover{color:var(--text)}
+.chain-tab.active{background:var(--white);color:var(--text);box-shadow:var(--shadow)}
+.chain-tab.active-cosmos{background:var(--white);color:var(--cosmos);box-shadow:var(--shadow)}
+.chain-tab.active-testnet{background:var(--white);color:var(--testnet);box-shadow:var(--shadow)}
+
+.nav-links{display:flex;gap:0;flex-shrink:0}
+.nav-link{font-size:12px;color:var(--muted);text-decoration:none;padding:5px 10px;border-radius:5px;transition:all 0.15s;white-space:nowrap}
+.nav-link:hover{color:var(--text);background:var(--bg)}
+.nav-link.active{color:var(--accent);font-weight:500}
+
+.nav-actions{display:flex;gap:6px;flex-shrink:0}
+.btn-sm{padding:5px 12px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;transition:all 0.15s;font-family:var(--sans);white-space:nowrap}
+.btn-outline{border:1px solid var(--border2);color:var(--text);background:var(--white)}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+.btn-primary{border:1px solid var(--accent);color:#fff;background:var(--accent)}
+.btn-primary:hover{background:var(--accent2)}
+
+/* NETWORK MODE BANNER */
+.net-banner{padding:6px 20px;font-size:11px;font-weight:500;letter-spacing:0.04em;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+.net-banner.mainnet{background:var(--accent-bg);color:var(--accent)}
+.net-banner.cosmos{background:var(--cosmos-bg);color:var(--cosmos)}
+.net-banner.testnet{background:var(--testnet-bg);color:var(--testnet)}
+
+/* SEARCH */
+.search-wrap{background:var(--white);border-bottom:1px solid var(--border);padding:12px 0}
+.search-inner{max-width:1360px;margin:0 auto;padding:0 20px;display:flex;gap:8px;align-items:center}
+.search-box{flex:1;display:flex;align-items:center;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:0 12px;height:38px;gap:7px;transition:all 0.15s;max-width:620px}
+.search-box:focus-within{border-color:var(--accent);background:var(--white);box-shadow:0 0 0 3px rgba(82,99,255,0.09)}
+.search-box svg{width:14px;height:14px;stroke:var(--muted);stroke-width:2;fill:none;flex-shrink:0}
+.search-box input{flex:1;border:none;background:none;outline:none;font-size:12px;color:var(--text);font-family:var(--mono)}
+.search-box input::placeholder{color:var(--muted2);font-family:var(--sans);font-size:12px}
+.search-sel{height:38px;padding:0 10px;border:1px solid var(--border);border-radius:9px;font-size:11px;color:var(--text);background:var(--white);cursor:pointer;font-family:var(--sans);outline:none}
+.search-btn{height:38px;padding:0 18px;background:var(--accent);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:500;cursor:pointer;font-family:var(--sans);transition:background 0.15s}
+.search-btn:hover{background:var(--accent2)}
+.ex-chips{display:flex;gap:6px;align-items:center;font-size:11px;color:var(--muted);flex-shrink:0}
+.ex-chip{padding:2px 7px;background:var(--bg);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-family:var(--mono);font-size:10px;transition:all 0.15s}
+.ex-chip:hover{border-color:var(--accent);color:var(--accent)}
+
+/* LAYOUT */
+.page{max-width:1360px;margin:0 auto;padding:20px;display:grid;grid-template-columns:1fr 320px;gap:18px;align-items:start}
+.main{display:flex;flex-direction:column;gap:14px}
+.sidebar{display:flex;flex-direction:column;gap:14px}
+
+/* CARDS */
+.card{background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.card-header{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px}
+.card-link{font-size:11px;color:var(--accent);text-decoration:none;font-weight:500}
+.card-link:hover{color:var(--accent2);text-decoration:underline}
+
+/* COSMOS CARD ACCENT */
+.card.cosmos-card{border-top:2px solid var(--cosmos)}
+.card.testnet-card{border-top:2px solid var(--testnet)}
+
+/* STAT STRIP */
+.stat-strip{display:grid;grid-template-columns:repeat(5,1fr);background:var(--white);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.stat-item{padding:14px 16px;border-right:1px solid var(--border)}
+.stat-item:last-child{border-right:none}
+.stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px;font-weight:500}
+.stat-val{font-size:20px;font-weight:600;color:var(--text);letter-spacing:-0.5px;line-height:1;margin-bottom:3px}
+.stat-sub{font-size:10px;font-family:var(--mono)}
+.up{color:var(--green)}.dn{color:var(--red)}
+
+/* TABLE */
+.data-table{width:100%;border-collapse:collapse}
+.data-table th{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);padding:9px 16px;text-align:left;background:var(--bg);border-bottom:1px solid var(--border)}
+.data-table td{padding:10px 16px;font-size:12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:var(--bg)}
+
+.hash{font-family:var(--mono);font-size:11px;color:var(--accent);cursor:pointer;text-decoration:none}
+.hash:hover{color:var(--accent2);text-decoration:underline}
+.addr{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.addr b{color:var(--text);font-weight:500}
+
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:500;letter-spacing:0.02em;white-space:nowrap}
+.badge-green{background:var(--green-bg);color:var(--green)}
+.badge-red{background:var(--red-bg);color:var(--red)}
+.badge-amber{background:var(--amber-bg);color:var(--amber)}
+.badge-purple{background:var(--purple-bg);color:var(--purple)}
+.badge-blue{background:var(--accent-bg);color:var(--accent)}
+.badge-gray{background:var(--bg2);color:var(--muted)}
+.badge-cosmos{background:var(--cosmos-bg);color:var(--cosmos)}
+.badge-testnet{background:var(--testnet-bg);color:var(--testnet)}
+
+.num{font-family:var(--mono);font-size:11px;color:var(--text)}
+.num-green{font-family:var(--mono);font-size:11px;color:var(--green);font-weight:500}
+.num-muted{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.t-small{font-size:10px;color:var(--muted);font-family:var(--mono)}
+
+/* BLOCK LIST */
+.block-list{display:flex;flex-direction:column}
+.block-row{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);transition:background 0.1s}
+.block-row:last-child{border-bottom:none}
+.block-row:hover{background:var(--bg)}
+.block-icon{width:34px;height:34px;border-radius:8px;background:var(--accent-bg);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;color:var(--accent)}
+.block-icon.cosmos{background:var(--cosmos-bg);color:var(--cosmos)}
+.block-icon.testnet{background:var(--testnet-bg);color:var(--testnet)}
+.block-info{flex:1;min-width:0}
+.block-num{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--accent);display:block;cursor:pointer}
+.block-num:hover{text-decoration:underline}
+.block-meta{font-size:10px;color:var(--muted);margin-top:1px}
+.block-right{text-align:right;flex-shrink:0}
+.block-txcount{font-size:11px;font-weight:500;color:var(--text)}
+.block-time{font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:1px}
+
+/* VALIDATOR ROWS */
+.val-row{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--border);transition:background 0.1s}
+.val-row:last-child{border-bottom:none}
+.val-row:hover{background:var(--bg)}
+.val-rank{width:22px;text-align:center;font-size:10px;font-family:var(--mono);color:var(--muted);flex-shrink:0}
+.val-avatar{width:30px;height:30px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
+.val-info{flex:1;min-width:0}
+.val-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.val-commission{font-size:10px;color:var(--muted)}
+.val-right{text-align:right;flex-shrink:0}
+.val-vp{font-size:11px;font-weight:500;font-family:var(--mono)}
+.val-bar-wrap{width:70px;height:3px;background:var(--bg2);border-radius:2px;margin-top:4px;margin-left:auto}
+.val-bar{height:3px;border-radius:2px}
+
+/* CHAIN OVERVIEW */
+.chain-overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+.chain-ov-cell{background:var(--white);padding:14px 16px}
+.chain-ov-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:4px;font-weight:500}
+.chain-ov-val{font-size:16px;font-weight:600;color:var(--text);letter-spacing:-0.3px}
+.chain-ov-sub{font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:2px}
+
+/* TABS */
+.tab-bar{display:flex;border-bottom:1px solid var(--border);padding:0 16px;overflow-x:auto;scrollbar-width:none}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab{padding:9px 14px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s;white-space:nowrap;flex-shrink:0}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab.active-cosmos{color:var(--cosmos);border-bottom-color:var(--cosmos)}
+.tab.active-testnet{color:var(--testnet);border-bottom-color:var(--testnet)}
+
+/* LIVE INDICATOR */
+.live-pill{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:500;color:var(--green);background:var(--green-bg);border:1px solid rgba(5,150,105,0.2);border-radius:100px;padding:2px 7px}
+.live-dot{width:5px;height:5px;background:var(--green);border-radius:50%;animation:blink 1.2s infinite}
+.testnet-pill{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--testnet);background:var(--testnet-bg);border:1px solid rgba(217,119,6,0.25);border-radius:100px;padding:2px 7px;letter-spacing:0.04em}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* PRICE ROW */
+.price-row{display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid var(--border)}
+.price-row:last-child{border-bottom:none}
+.token-icon{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.token-name{font-size:12px;font-weight:500}
+.token-sym{font-size:10px;color:var(--muted);font-family:var(--mono)}
+.token-price{font-size:12px;font-weight:500;font-family:var(--mono);text-align:right}
+.token-change{font-size:10px;font-family:var(--mono);text-align:right}
+
+/* MINI CHART */
+.mini-chart{padding:0 16px 14px}
+.chart-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);font-family:var(--mono);margin-top:3px}
+
+/* PROPOSAL */
+.proposal-item{padding:12px 16px;border-bottom:1px solid var(--border)}
+.proposal-item:last-child{border-bottom:none}
+.proposal-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:4px}
+.proposal-id{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.proposal-title{font-size:12px;font-weight:500;line-height:1.4;margin-top:1px}
+.proposal-meta{font-size:10px;color:var(--muted);display:flex;gap:10px;margin-top:5px;flex-wrap:wrap}
+.vote-bar{height:4px;border-radius:3px;background:var(--bg2);display:flex;overflow:hidden;margin-top:6px;gap:1px}
+.vote-yes{background:var(--green)}.vote-no{background:var(--red)}.vote-abs{background:var(--muted2)}.vote-veto{background:var(--amber)}
+
+/* IBC TRANSFERS */
+.ibc-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);font-size:12px}
+.ibc-row:last-child{border-bottom:none}
+.ibc-row:hover{background:var(--bg)}
+.ibc-channel{font-family:var(--mono);font-size:10px;color:var(--cosmos);font-weight:500}
+.ibc-arrow{color:var(--muted2);font-size:11px}
+.ibc-chain-tag{display:inline-flex;align-items:center;gap:4px;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:500}
+
+/* SIDEBAR CHAIN CARD */
+.side-chain-row{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s}
+.side-chain-row:last-child{border-bottom:none}
+.side-chain-row:hover{background:var(--bg)}
+.side-chain-row.selected{background:var(--accent-bg)}
+.side-chain-row.selected-cosmos{background:var(--cosmos-bg)}
+.side-chain-row.selected-testnet{background:var(--testnet-bg)}
+.side-chain-avatar{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.side-chain-name{font-size:12px;font-weight:500;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.side-chain-block{font-size:9px;color:var(--muted);font-family:var(--mono)}
+.side-chain-status{font-size:10px;font-weight:500;font-family:var(--mono);text-align:right;flex-shrink:0}
+.side-chain-gas{font-size:9px;color:var(--muted);font-family:var(--mono);text-align:right;margin-top:1px}
+
+/* TESTNET WARNING */
+.testnet-warning{background:var(--testnet-bg);border:1px solid rgba(217,119,6,0.25);border-radius:8px;padding:10px 14px;font-size:11px;color:var(--testnet);display:flex;align-items:center;gap:7px}
+
+/* FOOTER */
+footer{border-top:1px solid var(--border);background:var(--white);margin-top:32px}
+.footer-inner{max-width:1360px;margin:0 auto;padding:20px;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--muted)}
+.footer-links{display:flex;gap:16px}
+.footer-links a{color:var(--muted);text-decoration:none}
+.footer-links a:hover{color:var(--accent)}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+@media(max-width:960px){
+  .page{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .stat-strip{grid-template-columns:repeat(3,1fr)}
+  .nav-links{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-item">ETH Gas: <span class="topbar-val">12 Gwei</span></div>
+  <span class="topbar-sep">|</span>
+  <div class="topbar-item">ATOM: <span class="topbar-val">$8.42</span> <span style="color:#86efac">▲ 3.1%</span></div>
+  <span class="topbar-sep">|</span>
+  <div class="topbar-item">BTC: <span class="topbar-val">$67,240</span> <span style="color:#86efac">▲ 2.4%</span></div>
+  <span class="topbar-sep">|</span>
+  <div class="topbar-item">ETH: <span class="topbar-val">$3,512</span> <span style="color:#86efac">▲ 1.8%</span></div>
+  <span class="topbar-sep">|</span>
+  <div class="topbar-item">Chains Online: <span class="topbar-val">28 / 28</span></div>
+  <span class="topbar-sep">|</span>
+  <div class="topbar-item">IBC Channels: <span class="topbar-val">124 active</span></div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a class="logo" href="#">
+      <div class="logo-mark"><svg viewBox="0 0 16 16"><polygon points="8,2 14,6 14,10 8,14 2,10 2,6"/></svg></div>
+      ChainSight
+    </a>
+
+    <!-- Network Group Switcher -->
+    <div class="net-group-wrap">
+      <button class="net-group-btn active-main" id="grp-main" onclick="switchGroup('main')">Mainnet</button>
+      <button class="net-group-btn" id="grp-cosmos" onclick="switchGroup('cosmos')">Cosmos</button>
+      <button class="net-group-btn" id="grp-testnet" onclick="switchGroup('testnet')">Testnet</button>
+    </div>
+
+    <!-- Chain Tabs (dynamic) -->
+    <div class="chain-tabs-wrap">
+      <div class="chain-tabs" id="chainTabsBar">
+        <!-- filled by JS -->
+      </div>
+    </div>
+
+    <div class="nav-links">
+      <a href="#" class="nav-link active">Overview</a>
+      <a href="#" class="nav-link">Blocks</a>
+      <a href="#" class="nav-link">Transactions</a>
+      <a href="#" class="nav-link">Validators</a>
+      <a href="#" class="nav-link">IBC</a>
+      <a href="#" class="nav-link">Proposals</a>
+    </div>
+
+    <div class="nav-actions">
+      <button class="btn-sm btn-outline">API</button>
+      <button class="btn-sm btn-primary">Connect Wallet</button>
+    </div>
+  </div>
+</nav>
+
+<!-- NETWORK BANNER -->
+<div class="net-banner mainnet" id="netBanner">
+  <span>●</span> <span id="bannerText">Mainnet Networks — Live production data</span>
+</div>
+
+<!-- SEARCH -->
+<div class="search-wrap">
+  <div class="search-inner">
+    <div class="search-box">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input id="searchInput" type="text" placeholder="Search by Address / Tx Hash / Block / Token / Validator / IBC Channel" />
+    </div>
+    <select class="search-sel" id="searchSel">
+      <option>All Networks</option>
+    </select>
+    <button class="search-btn">Search</button>
+    <div class="ex-chips">
+      Try:
+      <span class="ex-chip" onclick="fillSearch('cosmos1abc…xyz')">Cosmos Addr</span>
+      <span class="ex-chip" onclick="fillSearch('channel-0')">IBC Channel</span>
+      <span class="ex-chip" onclick="fillSearch('0x742d…')">EVM Wallet</span>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE -->
+<div class="page">
+<div class="main" id="mainContent">
+  <!-- filled by JS based on active chain -->
+</div>
+
+<div class="sidebar" id="sidebarContent">
+  <!-- filled by JS -->
+</div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div style="display:flex;align-items:center;gap:7px;font-weight:500;color:var(--text)">
+      <div style="width:18px;height:18px;background:var(--accent);border-radius:4px;display:flex;align-items:center;justify-content:center">
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="white" stroke-width="2"><polygon points="8,2 14,6 14,10 8,14 2,10 2,6"/></svg>
+      </div>
+      ChainSight Explorer
+    </div>
+    <div class="footer-links">
+      <a href="#">Docs</a><a href="#">API</a><a href="#">Status</a><a href="#">GitHub</a><a href="#">Privacy</a>
+    </div>
+    <div>Data updates every 5s · © 2026 ChainSight</div>
+  </div>
+</footer>
+
+<script>
+// ════════════════════════════════════════════
+// CHAIN DATA
+// ════════════════════════════════════════════
+const CHAINS = {
+  main: [
+    {id:'eth',  name:'Ethereum',  sym:'ETH',  dot:'#627eea', icon:'Ξ',  iconBg:'#627eea', chainId:'1',      block:'19,847,233', blockLabel:'Block',  blockTime:'12.1s', tps:'15.3',  gas:'12 Gwei',    staked:'29.4M ETH',  validators:1024, txDay:'1.24M', consensus:'Proof of Stake',   supply:'120.4M ETH',  util:'87.4%'},
+    {id:'bnb',  name:'BNB Chain', sym:'BNB',  dot:'#f0b90b', icon:'⬡',  iconBg:'#f0b90b', iconColor:'#000', chainId:'56',     block:'37,412,091', blockLabel:'Block',  blockTime:'3.0s',  tps:'72.8',  gas:'3 Gwei',     staked:'11.2M BNB',  validators:21,   txDay:'4.8M',  consensus:'Proof of Authority',supply:'159M BNB',    util:'62.1%'},
+    {id:'sol',  name:'Solana',    sym:'SOL',  dot:'#9945ff', icon:'◎',  iconBg:'#9945ff', chainId:'SOL',    block:'264,721,048',blockLabel:'Slot',  blockTime:'0.4s',  tps:'4200',  gas:'0.00005 SOL',staked:'390M SOL',   validators:1967, txDay:'52M',   consensus:'Proof of History', supply:'578M SOL',   util:'44.2%'},
+    {id:'avax', name:'Avalanche', sym:'AVAX', dot:'#e84142', icon:'▲',  iconBg:'#e84142', chainId:'43114',  block:'44,891,207', blockLabel:'Block',  blockTime:'2.0s',  tps:'34.6',  gas:'25 nAVAX',   staked:'248M AVAX',  validators:1214, txDay:'892K',  consensus:'Avalanche Consensus',supply:'441M AVAX',  util:'51.7%'},
+    {id:'arb',  name:'Arbitrum',  sym:'ARB',  dot:'#12aaff', icon:'⟁',  iconBg:'#12aaff', chainId:'42161',  block:'194,238,471',blockLabel:'Block',  blockTime:'0.25s', tps:'28.4',  gas:'0.1 Gwei',   staked:'–',          validators:9,    txDay:'2.1M',  consensus:'Optimistic Rollup', supply:'10B ARB',    util:'71.2%'},
+    {id:'op',   name:'Optimism',  sym:'OP',   dot:'#ff0420', icon:'◈',  iconBg:'#ff0420', chainId:'10',     block:'118,447,912',blockLabel:'Block',  blockTime:'2.0s',  tps:'12.7',  gas:'0.04 Gwei',  staked:'–',          validators:7,    txDay:'674K',  consensus:'Optimistic Rollup', supply:'4.29B OP',   util:'38.5%'},
+  ],
+  cosmos: [
+    {id:'atom',  name:'Cosmos Hub', sym:'ATOM',  dot:'#2e3aad', icon:'⚛',  iconBg:'#2e3aad', chainId:'cosmoshub-4',  block:'19,248,711', blockLabel:'Block',  blockTime:'6.5s', tps:'8.2',  gas:'0.025 uatom', staked:'218M ATOM',  validators:175, txDay:'142K', consensus:'Tendermint BFT', supply:'389M ATOM',  util:'56.2%', ibc:true},
+    {id:'osmo',  name:'Osmosis',    sym:'OSMO',  dot:'#7a46d4', icon:'◉',  iconBg:'#7a46d4', chainId:'osmosis-1',    block:'11,743,291', blockLabel:'Block',  blockTime:'5.9s', tps:'12.4', gas:'0.025 uosmo', staked:'412M OSMO',  validators:150, txDay:'318K', consensus:'Tendermint BFT', supply:'1.02B OSMO', util:'71.4%', ibc:true},
+    {id:'juno',  name:'Juno',       sym:'JUNO',  dot:'#f0827d', icon:'Ж',  iconBg:'#f0827d', chainId:'juno-1',       block:'12,318,447', blockLabel:'Block',  blockTime:'6.1s', tps:'4.1',  gas:'0.075 ujuno', staked:'42M JUNO',   validators:135, txDay:'28K',  consensus:'Tendermint BFT', supply:'185M JUNO',  util:'31.2%', ibc:true},
+    {id:'stars', name:'Stargaze',   sym:'STARS', dot:'#db2777', icon:'★',  iconBg:'#db2777', chainId:'stargaze-1',   block:'10,441,128', blockLabel:'Block',  blockTime:'6.0s', tps:'3.8',  gas:'1 ustars',    staked:'1.8B STARS', validators:135, txDay:'19K',  consensus:'Tendermint BFT', supply:'9.8B STARS', util:'22.7%', ibc:true},
+    {id:'evmos', name:'Evmos',      sym:'EVMOS', dot:'#ed4e33', icon:'Ε',  iconBg:'#ed4e33', chainId:'evmos_9001-2', block:'19,912,334', blockLabel:'Block',  blockTime:'2.1s', tps:'18.9', gas:'250 Gwei',    staked:'3.4B EVMOS', validators:150, txDay:'87K',  consensus:'Tendermint + EVM', supply:'19.3B EVMOS',util:'47.8%', ibc:true},
+    {id:'inj',   name:'Injective',  sym:'INJ',   dot:'#00b4d8', icon:'⬡',  iconBg:'#00b4d8', chainId:'injective-1',  block:'42,184,091', blockLabel:'Block',  blockTime:'0.9s', tps:'25.6', gas:'0.016 INJ',   staked:'72M INJ',    validators:100, txDay:'204K', consensus:'Tendermint BFT', supply:'100M INJ',   util:'68.3%', ibc:true},
+  ],
+  testnet: [
+    {id:'ethsep', name:'ETH Sepolia',    sym:'ETH',    dot:'#a0aec0', icon:'Ξ',  iconBg:'#718096', chainId:'11155111', block:'5,847,912',   blockLabel:'Block', blockTime:'12.0s', tps:'4.2',  gas:'5 Gwei',      staked:'–', validators:6, txDay:'31K',  consensus:'PoS Testnet', supply:'∞ (faucet)',   util:'22.1%', testnet:true},
+    {id:'bnbtest',name:'BNB Testnet',    sym:'tBNB',   dot:'#d4a017', icon:'⬡',  iconBg:'#b7860b', iconColor:'#fff', chainId:'97',       block:'37,001,882',  blockLabel:'Block', blockTime:'3.0s',  tps:'11.2', gas:'10 Gwei',     staked:'–', validators:5, txDay:'88K',  consensus:'PoA Testnet', supply:'∞ (faucet)',   util:'18.4%', testnet:true},
+    {id:'avaxfuji',name:'AVAX Fuji',     sym:'AVAX',   dot:'#c8a26a', icon:'▲',  iconBg:'#a0845c', chainId:'43113',    block:'31,441,209',  blockLabel:'Block', blockTime:'2.0s',  tps:'2.8',  gas:'25 nAVAX',    staked:'–', validators:4, txDay:'17K',  consensus:'Testnet',     supply:'∞ (faucet)',   util:'11.3%', testnet:true},
+    {id:'cosmostest',name:'Cosmos Theta',sym:'ATOM',   dot:'#8896c8', icon:'⚛',  iconBg:'#6e7fba', chainId:'theta-testnet-001',block:'17,448,912',blockLabel:'Block',blockTime:'6.5s',tps:'1.4', gas:'0.025 uatom', staked:'–', validators:60,txDay:'4.2K', consensus:'Tendermint',  supply:'∞ (faucet)',   util:'8.7%', testnet:true, ibc:true},
+    {id:'osmotest', name:'Osmosis Testnet',sym:'OSMO', dot:'#9b8ab8', icon:'◉',  iconBg:'#8068a0', chainId:'osmo-test-5',    block:'8,441,201',   blockLabel:'Block', blockTime:'6.0s',  tps:'0.9',  gas:'0.025 uosmo', staked:'–', validators:50,txDay:'2.8K', consensus:'Tendermint',  supply:'∞ (faucet)',   util:'5.2%', testnet:true, ibc:true},
+    {id:'pushtest', name:'Push Chain Testnet',sym:'PUSH',dot:'#c89b40',icon:'↑', iconBg:'#a07820', chainId:'push-test-1',    block:'1,284,441',   blockLabel:'Block', blockTime:'4.0s',  tps:'3.1',  gas:'0.01 PUSH',   staked:'–', validators:32,txDay:'8.1K', consensus:'Tendermint',  supply:'∞ (faucet)',   util:'15.8%', testnet:true},
+    {id:'reptest',  name:'Republic AI Testnet',sym:'REP',dot:'#b07070',icon:'⬡', iconBg:'#8b4a4a', chainId:'republic-test-1',block:'2,183,441',   blockLabel:'Block', blockTime:'3.5s',  tps:'2.4',  gas:'0.005 REP',   staked:'–', validators:25,txDay:'5.3K', consensus:'CometBFT',    supply:'∞ (faucet)',   util:'12.1%', testnet:true},
+  ]
+};
+
+// ════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════
+let currentGroup = 'main';
+let currentChainId = 'eth';
+let blockCounters = {};
+
+// ════════════════════════════════════════════
+// SWITCH GROUP
+// ════════════════════════════════════════════
+function switchGroup(grp) {
+  currentGroup = grp;
+  // Update group buttons
+  ['main','cosmos','testnet'].forEach(g => {
+    const btn = document.getElementById('grp-'+g);
+    btn.className = 'net-group-btn';
+    if(g === grp) btn.className = 'net-group-btn active-'+g;
+  });
+  // Default chain
+  currentChainId = CHAINS[grp][0].id;
+  renderChainTabs();
+  renderBanner();
+  renderSearchOptions();
+  renderPage();
+}
+
+function renderBanner() {
+  const b = document.getElementById('netBanner');
+  const t = document.getElementById('bannerText');
+  b.className = 'net-banner';
+  if(currentGroup === 'main') {
+    b.classList.add('mainnet');
+    t.textContent = 'Mainnet Networks — Live production data';
+  } else if(currentGroup === 'cosmos') {
+    b.classList.add('cosmos');
+    t.textContent = 'Cosmos Ecosystem — IBC-connected chains · Tendermint BFT consensus';
+  } else {
+    b.classList.add('testnet');
+    t.textContent = '⚠ Testnet Networks — Test tokens only, no real value';
+  }
+}
+
+function renderChainTabs() {
+  const bar = document.getElementById('chainTabsBar');
+  const chains = CHAINS[currentGroup];
+  bar.innerHTML = chains.map(c => {
+    const cls = c.id === currentChainId
+      ? (currentGroup === 'cosmos' ? 'chain-tab active-cosmos' : currentGroup === 'testnet' ? 'chain-tab active-testnet' : 'chain-tab active')
+      : 'chain-tab';
+    return `<button class="${cls}" onclick="switchChain('${c.id}')">
+      <span class="dot" style="background:${c.dot}"></span>${c.name}
+    </button>`;
+  }).join('');
+}
+
+function switchChain(id) {
+  currentChainId = id;
+  renderChainTabs();
+  renderPage();
+}
+
+function renderSearchOptions() {
+  const sel = document.getElementById('searchSel');
+  const chains = CHAINS[currentGroup];
+  sel.innerHTML = '<option>All Networks</option>' + chains.map(c => `<option>${c.name}</option>`).join('');
+}
+
+function fillSearch(v){ document.getElementById('searchInput').value = v; }
+
+// ════════════════════════════════════════════
+// RENDER PAGE
+// ════════════════════════════════════════════
+function renderPage() {
+  const chain = CHAINS[currentGroup].find(c => c.id === currentChainId);
+  document.getElementById('mainContent').innerHTML = buildMain(chain);
+  document.getElementById('sidebarContent').innerHTML = buildSidebar(chain);
+  // restart block counter
+  if(!blockCounters[chain.id]) blockCounters[chain.id] = parseInt(chain.block.replace(/,/g,''));
+  // re-bind tab clicks (they use onclick so auto-bind)
+}
+
+function buildMain(c) {
+  const isTestnet = !!c.testnet;
+  const isCosmos = !!c.ibc;
+  const accentColor = isTestnet ? 'var(--testnet)' : isCosmos ? 'var(--cosmos)' : 'var(--accent)';
+  const tabActiveClass = isTestnet ? 'active-testnet' : isCosmos ? 'active-cosmos' : 'active';
+
+  const blockNum = blockCounters[c.id] || parseInt(c.block.replace(/,/g,''));
+
+  let html = '';
+
+  // Testnet warning
+  if(isTestnet) {
+    html += `<div class="testnet-warning">
+      ⚠ <strong>Testnet:</strong> ${c.name} — All tokens are test tokens with no real value. Use a faucet to get test funds.
+    </div>`;
+  }
+
+  // Stat strip
+  html += `<div class="stat-strip">
+    <div class="stat-item">
+      <div class="stat-label">${c.blockLabel} Height</div>
+      <div class="stat-val" id="blockHeightDisplay">${blockNum.toLocaleString()}</div>
+      <div class="stat-sub up">+1 every ~${c.blockTime}</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">Transactions (24h)</div>
+      <div class="stat-val">${c.txDay}</div>
+      <div class="stat-sub up">↑ Live</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">Validators</div>
+      <div class="stat-val">${c.validators.toLocaleString()}</div>
+      <div class="stat-sub" style="color:var(--muted)">${isTestnet ? 'Testnet set' : 'Active set'}</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">Gas / Fee</div>
+      <div class="stat-val" style="font-size:15px">${c.gas}</div>
+      <div class="stat-sub" style="color:var(--muted)">Base fee</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-label">${c.staked !== '–' ? 'Total Staked' : 'Consensus'}</div>
+      <div class="stat-val" style="font-size:${c.staked !== '–' ? '15' : '13'}px">${c.staked !== '–' ? c.staked : c.consensus}</div>
+      <div class="stat-sub" style="color:var(--muted)">${c.staked !== '–' ? c.consensus : ''}</div>
+    </div>
+  </div>`;
+
+  // Chain overview
+  html += `<div class="card ${isTestnet ? 'testnet-card' : isCosmos ? 'cosmos-card' : ''}">
+    <div class="card-header">
+      <div class="card-title">
+        <span style="width:10px;height:10px;border-radius:50%;background:${c.dot};display:inline-block"></span>
+        ${c.name} ${isTestnet ? '&nbsp;<span class="testnet-pill">TESTNET</span>' : '<span class="live-pill"><span class="live-dot"></span>LIVE</span>'}
+        ${c.ibc ? '<span class="badge badge-cosmos">IBC</span>' : ''}
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span class="badge badge-gray">${c.blockLabel} #${c.block}</span>
+        <a href="#" class="card-link">Full Details →</a>
+      </div>
+    </div>
+    <div class="chain-overview-grid">
+      <div class="chain-ov-cell">
+        <div class="chain-ov-label">Consensus</div>
+        <div class="chain-ov-val">${c.consensus}</div>
+        <div class="chain-ov-sub">Chain ID: ${c.chainId}</div>
+      </div>
+      <div class="chain-ov-cell">
+        <div class="chain-ov-label">Block Time</div>
+        <div class="chain-ov-val">${c.blockTime}</div>
+        <div class="chain-ov-sub">Avg over last 1,000 blocks</div>
+      </div>
+      <div class="chain-ov-cell">
+        <div class="chain-ov-label">Total Supply</div>
+        <div class="chain-ov-val">${c.supply}</div>
+        <div class="chain-ov-sub">${isTestnet ? 'Unlimited · faucet available' : 'Circulating supply'}</div>
+      </div>
+      <div class="chain-ov-cell">
+        <div class="chain-ov-label">Network Utilization</div>
+        <div class="chain-ov-val">${c.util}</div>
+        <div class="chain-ov-sub">TPS avg: ${c.tps}</div>
+      </div>
+    </div>
+    <div class="mini-chart" style="padding-top:12px">
+      <div style="font-size:10px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px">TPS — Last 30 Blocks</div>
+      <svg width="100%" height="48" viewBox="0 0 800 48" preserveAspectRatio="none">
+        <defs><linearGradient id="gr${c.id}" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${c.dot}" stop-opacity="0.18"/>
+          <stop offset="100%" stop-color="${c.dot}" stop-opacity="0"/>
+        </linearGradient></defs>
+        <path d="M0,38 L27,32 L53,36 L80,28 L107,30 L133,22 L160,26 L186,18 L213,22 L240,14 L266,20 L293,12 L320,16 L346,10 L373,14 L400,8 L426,12 L453,6 L480,10 L506,4 L533,9 L560,3 L586,7 L613,5 L640,9 L666,3 L693,7 L720,2 L746,6 L773,4 L800,8 L800,48 L0,48 Z" fill="url(#gr${c.id})"/>
+        <path d="M0,38 L27,32 L53,36 L80,28 L107,30 L133,22 L160,26 L186,18 L213,22 L240,14 L266,20 L293,12 L320,16 L346,10 L373,14 L400,8 L426,12 L453,6 L480,10 L506,4 L533,9 L560,3 L586,7 L613,5 L640,9 L666,3 L693,7 L720,2 L746,6 L773,4 L800,8" fill="none" stroke="${c.dot}" stroke-width="1.5"/>
+      </svg>
+      <div class="chart-labels"><span>−30</span><span>−25</span><span>−20</span><span>−15</span><span>−10</span><span>−5</span><span>Now</span></div>
+    </div>
+  </div>`;
+
+  // Tx / blocks tabs
+  const tabClass = tabActiveClass;
+  html += `<div class="card">
+    <div class="tab-bar">
+      <div class="tab ${tabClass}" onclick="setTab(this,'txs','${c.id}')">Latest Transactions</div>
+      <div class="tab" onclick="setTab(this,'blks','${c.id}')">Latest Blocks</div>
+      ${c.ibc ? `<div class="tab" onclick="setTab(this,'ibc','${c.id}')">IBC Transfers</div>` : ''}
+      <div class="tab" onclick="setTab(this,'props','${c.id}')">Proposals</div>
+    </div>
+    <div id="pane-txs">
+    ${buildTxTable(c)}
+    </div>
+    <div id="pane-blks" style="display:none">${buildBlocksList(c)}</div>
+    ${c.ibc ? `<div id="pane-ibc" style="display:none">${buildIBCTable(c)}</div>` : ''}
+    <div id="pane-props" style="display:none">${buildProposals(c)}</div>
+  </div>`;
+
+  return html;
+}
+
+function setTab(el, pane, cid) {
+  const bar = el.closest('.tab-bar');
+  bar.querySelectorAll('.tab').forEach(t => t.classList.remove('active','active-cosmos','active-testnet'));
+  const chain = CHAINS[currentGroup].find(c => c.id === cid);
+  const cls = chain && chain.testnet ? 'active-testnet' : chain && chain.ibc ? 'active-cosmos' : 'active';
+  el.classList.add(cls);
+  ['txs','blks','ibc','props'].forEach(p => {
+    const el = document.getElementById('pane-'+p);
+    if(el) el.style.display = (p === pane) ? '' : 'none';
+  });
+}
+
+function buildTxTable(c) {
+  const sym = c.sym;
+  const isTestnet = !!c.testnet;
+  const rows = isTestnet ? [
+    {hash:'0xf1a2…b3c4', method:'Transfer', block:'1,284,440', age:'8s ago',  from:'0xtest…a1b2', to:'0xfaucet', val:`2.000 ${sym}`,   fee:'0.00021', status:'success'},
+    {hash:'0x8d3c…e5f6', method:'Deploy',   block:'1,284,439', age:'15s ago', from:'0xdev1…c3d4', to:'Contract', val:`0.000 ${sym}`,   fee:'0.00140', status:'success'},
+    {hash:'0x2b7e…9012', method:'Interact', block:'1,284,438', age:'28s ago', from:'0xtest…e5f6', to:'TestToken',val:`0.000 ${sym}`,   fee:'0.00035', status:'pending'},
+    {hash:'0x6c4a…3456', method:'Transfer', block:'1,284,437', age:'41s ago', from:'faucet.test',  to:'0xnew1…', val:`100.000 ${sym}`, fee:'0.00018', status:'success'},
+  ] : c.ibc ? [
+    {hash:'cosmos1x4f…9a2b', method:'MsgSend',     block:'19,248,710', age:'7s ago',  from:'cosmos1abc…',      to:'cosmos1xyz…',       val:`42.500 ${sym}`,    fee:`0.025 u${sym.toLowerCase()}`, status:'success'},
+    {hash:'cosmos1k8m…3c1d', method:'MsgDelegate',  block:'19,248,710', age:'7s ago',  from:'cosmos1def…',      to:'CryptoCrew',        val:`500.000 ${sym}`,   fee:`0.025 u${sym.toLowerCase()}`, status:'success'},
+    {hash:'cosmos1b2n…7e4f', method:'IBCTransfer',  block:'19,248,709', age:'13s ago', from:`${c.name}`,        to:'Osmosis',           val:`12.000 ${sym}`,    fee:`0.025 u${sym.toLowerCase()}`, status:'success'},
+    {hash:'cosmos1p9q…1a5b', method:'MsgVote',      block:'19,248,709', age:'13s ago', from:'cosmos1ghi…',      to:'Gov Module',        val:`0.000 ${sym}`,     fee:`0.025 u${sym.toLowerCase()}`, status:'success'},
+    {hash:'cosmos1r3s…8d2c', method:'MsgUndelegate',block:'19,248,708', age:'20s ago', from:'cosmos1jkl…',      to:'Polychain',         val:`1,200.000 ${sym}`, fee:`0.025 u${sym.toLowerCase()}`, status:'success'},
+    {hash:'cosmos1t6u…4f9e', method:'IBCTransfer',  block:'19,248,707', age:'27s ago', from:'Osmosis',          to:`${c.name}`,         val:`88.000 OSMO`,      fee:`0.025 uosmo`,                 status:'success'},
+  ] : [
+    {hash:'0x4f2a…c19e', method:'Transfer', block:'19,847,233', age:'5s ago',  from:'vitalik.eth',       to:'0x3fe8…',     val:`4.820 ${sym}`,  fee:'0.0012', status:'success'},
+    {hash:'0x9b3c…f401', method:'Swap',     block:'19,847,233', age:'5s ago',  from:'0x3fe8…12cd',       to:'Uniswap V3',  val:`0.000 ${sym}`,  fee:'0.0008', status:'success'},
+    {hash:'0x1a7d…b892', method:'Mint',     block:'19,847,232', age:'17s ago', from:'0xd4ac…7e33',       to:'BAYC',        val:`0.080 ${sym}`,  fee:'0.0021', status:'success'},
+    {hash:'0x8ef1…a234', method:'Transfer', block:'19,847,232', age:'17s ago', from:'0x742d…a4b2',       to:'0xf012…',     val:`100.000 ${sym}`,fee:'0.0009', status:'success'},
+    {hash:'0x5c2b…d167', method:'Stake',    block:'19,847,231', age:'29s ago', from:'0xa712…b44f',       to:'Lido Finance',val:`32.000 ${sym}`, fee:'0.0015', status:'success'},
+    {hash:'0x3d9e…7f12', method:'Approve',  block:'19,847,231', age:'29s ago', from:'0x8ce3…a221',       to:'USDC Token',  val:`0.000 ${sym}`,  fee:'0.0006', status:'failed'},
+    {hash:'0x7a4c…e039', method:'Swap',     block:'19,847,230', age:'41s ago', from:'0x291b…f903',       to:'Curve',       val:`0.000 ${sym}`,  fee:'0.0019', status:'success'},
+    {hash:'0x2f8d…c748', method:'Transfer', block:'19,847,229', age:'53s ago', from:'0xb341…4e8d',       to:'0x9f22…11bc', val:`0.450 ${sym}`,  fee:'0.0007', status:'pending'},
+  ];
+
+  const methodColors = {Transfer:'gray',Swap:'purple',Mint:'blue',Stake:'amber',Approve:'gray',Deploy:'purple',Interact:'blue',
+    MsgSend:'blue',MsgDelegate:'cosmos',MsgUndelegate:'amber',IBCTransfer:'cosmos',MsgVote:'purple'};
+
+  return `<table class="data-table">
+    <thead><tr>
+      <th>Tx Hash</th><th>Method</th><th>${c.blockLabel}</th><th>Age</th><th>From</th><th>To</th><th>Value</th><th>Fee</th><th>Status</th>
+    </tr></thead>
+    <tbody>
+    ${rows.map(r => `<tr>
+      <td><a class="hash" href="#">${r.hash}</a></td>
+      <td><span class="badge badge-${methodColors[r.method]||'gray'}">${r.method}</span></td>
+      <td><a class="hash" href="#">${r.block}</a></td>
+      <td class="t-small">${r.age}</td>
+      <td class="addr"><b>${r.from}</b></td>
+      <td class="addr"><b>${r.to}</b></td>
+      <td class="${r.val.startsWith('0.000') ? 'num' : 'num-green'}">${r.val}</td>
+      <td class="num-muted">${r.fee}</td>
+      <td><span class="badge badge-${r.status==='success'?'green':r.status==='pending'?'amber':'red'}">${r.status==='success'?'✓ Success':r.status==='pending'?'⋯ Pending':'✗ Failed'}</span></td>
+    </tr>`).join('')}
+    </tbody>
+  </table>
+  <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+    <span style="font-size:11px;color:var(--muted)">Showing latest ${rows.length} transactions</span>
+    <a href="#" class="card-link">View All →</a>
+  </div>`;
+}
+
+function buildBlocksList(c) {
+  const blocks = Array.from({length:6}, (_,i) => {
+    const num = (parseInt(c.block.replace(/,/g,'')) - i).toLocaleString();
+    const txs = Math.floor(Math.random()*300)+50;
+    const validators = ['Lido','Coinbase','Kraken','Figment','Staked.us','CryptoCrew','Polychain','P2P.org','Chorus One'];
+    const val = validators[i % validators.length];
+    const secs = i===0 ? 'just now' : `${(i*Math.ceil(parseFloat(c.blockTime)))}s ago`;
+    return `<div class="block-row">
+      <div class="block-icon ${c.ibc?'cosmos':c.testnet?'testnet':''}">⬡</div>
+      <div class="block-info">
+        <a class="block-num" href="#">#${num}</a>
+        <div class="block-meta">Validator: <b>${val}</b> · 0.0${(i+3)}42 ${c.sym} fees</div>
+      </div>
+      <div class="block-right">
+        <div class="block-txcount">${txs+i*7} Txs</div>
+        <div class="block-time">${secs}</div>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div class="block-list">${blocks}</div>
+  <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+    <span style="font-size:11px;color:var(--muted)">Latest 6 blocks</span>
+    <a href="#" class="card-link">All Blocks →</a>
+  </div>`;
+}
+
+function buildIBCTable(c) {
+  const routes = [
+    {ch:'channel-0',  from:c.name, to:'Osmosis',    denom:'ATOM', amt:'12.000', status:'success', age:'4s ago'},
+    {ch:'channel-141',from:'Osmosis', to:c.name,     denom:'OSMO', amt:'88.000', status:'success', age:'9s ago'},
+    {ch:'channel-0',  from:c.name, to:'Juno',        denom:'ATOM', amt:'5.500',  status:'success', age:'18s ago'},
+    {ch:'channel-207',from:'Osmosis', to:'Juno',      denom:'OSMO', amt:'200.000',status:'pending', age:'24s ago'},
+    {ch:'channel-72', from:c.name, to:'Evmos',       denom:'ATOM', amt:'31.200', status:'success', age:'37s ago'},
+    {ch:'channel-10', from:'Juno',  to:c.name,       denom:'JUNO', amt:'14.000', status:'success', age:'51s ago'},
+    {ch:'channel-0',  from:c.name, to:'Stargaze',    denom:'ATOM', amt:'8.000',  status:'success', age:'1m ago'},
+    {ch:'channel-185',from:'Injective',to:c.name,    denom:'INJ',  amt:'2.500',  status:'success', age:'1m ago'},
+  ];
+  return `<table class="data-table">
+    <thead><tr>
+      <th>Channel</th><th>From</th><th></th><th>To</th><th>Denom</th><th>Amount</th><th>Age</th><th>Status</th>
+    </tr></thead>
+    <tbody>
+    ${routes.map(r => `<tr>
+      <td><span class="ibc-channel">${r.ch}</span></td>
+      <td><span class="ibc-chain-tag badge badge-cosmos">${r.from}</span></td>
+      <td style="color:var(--muted2);font-size:12px;padding:0 4px">→</td>
+      <td><span class="ibc-chain-tag badge badge-cosmos">${r.to}</span></td>
+      <td><span class="badge badge-gray">${r.denom}</span></td>
+      <td class="num-green">${r.amt}</td>
+      <td class="t-small">${r.age}</td>
+      <td><span class="badge badge-${r.status==='success'?'green':'amber'}">${r.status==='success'?'✓ Relayed':'⋯ Pending'}</span></td>
+    </tr>`).join('')}
+    </tbody>
+  </table>
+  <div style="padding:10px 16px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+    <span style="font-size:11px;color:var(--muted)">Latest 8 IBC transfers</span>
+    <a href="#" class="card-link">All IBC Transfers →</a>
+  </div>`;
+}
+
+function buildProposals(c) {
+  const isTestnet = !!c.testnet;
+  const props = isTestnet ? [
+    {id:1, title:`Increase block gas limit on ${c.name}`, status:'Voting', yes:82, no:8, abs:10, veto:0, ends:'1d 6h'},
+    {id:2, title:'Add faucet rate limit parameter', status:'Deposit', yes:40, no:30, abs:30, veto:0, ends:'3d 12h'},
+  ] : c.ibc ? [
+    {id:878, title:'Upgrade to ICS v3.4.0 for enhanced IBC security', status:'Voting', yes:74, no:16, abs:8, veto:2, ends:'2d 4h'},
+    {id:877, title:'Add Neutron to Replicated Security consumer chains',status:'Voting', yes:61, no:28, abs:9, veto:2, ends:'4d 8h'},
+    {id:876, title:'Cosmos Hub — Increase community pool tax to 2%', status:'Passed', yes:89, no:5, abs:5, veto:1, ends:'Ended'},
+  ] : [
+    {id:341, title:'EIP-7702: Set EOA account code for smart accounts', status:'Voting', yes:72, no:18, abs:8, veto:2, ends:'2d 14h'},
+    {id:340, title:'Increase validator set from 1,024 to 2,048',        status:'Deposit', yes:45, no:40, abs:15, veto:0, ends:'5d 8h'},
+  ];
+  return props.map(p => `<div class="proposal-item">
+    <div class="proposal-top">
+      <div>
+        <div class="proposal-id">#${p.id}</div>
+        <div class="proposal-title">${p.title}</div>
+      </div>
+      <span class="badge badge-${p.status==='Voting'?'cosmos':p.status==='Passed'?'green':'amber'}">${p.status}</span>
+    </div>
+    <div class="vote-bar">
+      <div class="vote-yes" style="width:${p.yes}%"></div>
+      <div class="vote-no" style="width:${p.no}%"></div>
+      <div class="vote-abs" style="width:${p.abs}%"></div>
+      <div class="vote-veto" style="width:${p.veto}%"></div>
+    </div>
+    <div class="proposal-meta">
+      <span class="up">Yes ${p.yes}%</span>
+      <span class="dn">No ${p.no}%</span>
+      <span style="color:var(--muted2)">Abstain ${p.abs}%</span>
+      ${p.veto ? `<span style="color:var(--amber)">Veto ${p.veto}%</span>` : ''}
+      <span style="margin-left:auto">${p.ends !== 'Ended' ? 'Ends in '+p.ends : 'Ended'}</span>
+    </div>
+  </div>`).join('')
+  + `<div style="padding:10px 16px;border-top:1px solid var(--border);text-align:right"><a href="#" class="card-link">All Proposals →</a></div>`;
+}
+
+// ════════════════════════════════════════════
+// SIDEBAR
+// ════════════════════════════════════════════
+function buildSidebar(activeChain) {
+  const chains = CHAINS[currentGroup];
+  let html = '';
+
+  // All chains list
+  html += `<div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        ${currentGroup === 'cosmos' ? '⚛ Cosmos Ecosystem' : currentGroup === 'testnet' ? '⚗ Testnets' : '🌐 All Networks'}
+      </div>
+      <span class="${currentGroup==='testnet'?'testnet-pill':currentGroup==='cosmos'?'badge badge-cosmos':'live-pill'}">
+        ${currentGroup==='testnet'?'⚠ TEST':currentGroup==='cosmos'?'IBC':'<span class="live-dot"></span>LIVE'}
+      </span>
+    </div>
+    <div>
+    ${chains.map(c => {
+      const isSel = c.id === activeChain.id;
+      const selClass = isSel ? (currentGroup==='cosmos'?'selected-cosmos':currentGroup==='testnet'?'selected-testnet':'selected') : '';
+      return `<div class="side-chain-row ${selClass}" onclick="switchChain('${c.id}')">
+        <span style="width:7px;height:7px;border-radius:50%;background:${c.dot};flex-shrink:0"></span>
+        <div class="side-chain-avatar" style="background:${c.iconBg};color:${c.iconColor||'#fff'}">${c.icon}</div>
+        <div style="flex:1;min-width:0">
+          <div class="side-chain-name">${c.name}</div>
+          <div class="side-chain-block">${c.blockLabel} #${c.block}</div>
+        </div>
+        <div>
+          <div class="side-chain-status" style="color:${currentGroup==='testnet'?'var(--testnet)':'var(--green)'}">${currentGroup==='testnet'?'Test':'Active'}</div>
+          <div class="side-chain-gas">${c.gas}</div>
+        </div>
+      </div>`;
+    }).join('')}
+    <div style="padding:9px 16px;border-top:1px solid var(--border);text-align:center">
+      <a href="#" class="card-link" style="font-size:11px">View All ${currentGroup==='cosmos'?'Cosmos Chains':currentGroup==='testnet'?'Testnets':'Networks'} →</a>
+    </div>
+    </div>
+  </div>`;
+
+  // Top validators
+  const vals = activeChain.ibc ? [
+    {rank:1,name:'CryptoCrew',  bg:'#2e3aad', abbr:'CC', vp:8.4, commission:'5%'},
+    {rank:2,name:'Polychain',   bg:'#4b5563', abbr:'PC', vp:6.2, commission:'5%'},
+    {rank:3,name:'P2P.org',     bg:'#0891b2', abbr:'P2', vp:5.7, commission:'5%'},
+    {rank:4,name:'Chorus One',  bg:'#7c3aed', abbr:'CO', vp:4.8, commission:'8%'},
+    {rank:5,name:'Lavender.Five',bg:'#db2777',abbr:'LF', vp:3.9, commission:'5%'},
+  ] : activeChain.testnet ? [
+    {rank:1,name:'Test Val A', bg:'#718096', abbr:'TA', vp:22.1, commission:'0%'},
+    {rank:2,name:'Test Val B', bg:'#a0aec0', abbr:'TB', vp:19.4, commission:'0%'},
+    {rank:3,name:'Test Val C', bg:'#cbd5e0', abbr:'TC', vp:17.8, commission:'0%'},
+  ] : [
+    {rank:1,name:'Lido Finance',  bg:'#2563eb', abbr:'Li', vp:28.4, commission:'10%'},
+    {rank:2,name:'Coinbase Cloud',bg:'#0891b2', abbr:'Cb', vp:14.2, commission:'15%'},
+    {rank:3,name:'Kraken',        bg:'#7c3aed', abbr:'Kr', vp:8.7,  commission:'15%'},
+    {rank:4,name:'Figment',       bg:'#059669', abbr:'Fi', vp:6.3,  commission:'8%'},
+    {rank:5,name:'Staked.us',     bg:'#d97706', abbr:'St', vp:4.9,  commission:'5%'},
+  ];
+  const barColor = currentGroup==='cosmos'?'var(--cosmos)':currentGroup==='testnet'?'var(--testnet)':'var(--accent)';
+
+  html += `<div class="card">
+    <div class="card-header"><div class="card-title">Top Validators</div><a href="#" class="card-link">All →</a></div>
+    <div>
+    ${vals.map(v => `<div class="val-row">
+      <div class="val-rank">${v.rank}</div>
+      <div class="val-avatar" style="background:${v.bg}">${v.abbr}</div>
+      <div class="val-info">
+        <div class="val-name">${v.name}</div>
+        <div class="val-commission">Commission: ${v.commission}</div>
+      </div>
+      <div class="val-right">
+        <div class="val-vp">${v.vp}%</div>
+        <div class="val-bar-wrap"><div class="val-bar" style="width:${Math.min(v.vp*2.5,100)}%;background:${barColor}"></div></div>
+      </div>
+    </div>`).join('')}
+    </div>
+  </div>`;
+
+  // Token prices (only mainnet + cosmos)
+  if(currentGroup !== 'testnet') {
+    const prices = currentGroup === 'cosmos' ? [
+      {icon:'⚛', bg:'#2e3aad', name:'Cosmos',    sym:'ATOM',  price:'$8.42',   chg:'▲ 3.1%',  up:true},
+      {icon:'◉', bg:'#7a46d4', name:'Osmosis',   sym:'OSMO',  price:'$0.84',   chg:'▲ 5.2%',  up:true},
+      {icon:'Ж', bg:'#f0827d', name:'Juno',      sym:'JUNO',  price:'$0.31',   chg:'▼ 1.4%',  up:false},
+      {icon:'★', bg:'#db2777', name:'Stargaze',  sym:'STARS', price:'$0.0028', chg:'▲ 2.8%',  up:true},
+      {icon:'⬡', bg:'#00b4d8', name:'Injective', sym:'INJ',   price:'$24.10',  chg:'▲ 7.3%',  up:true},
+    ] : [
+      {icon:'Ξ',  bg:'#627eea', name:'Ethereum',  sym:'ETH',  price:'$3,512',  chg:'▲ 1.8%', up:true},
+      {icon:'⬡',  bg:'#f0b90b', name:'BNB',       sym:'BNB',  price:'$412.80', chg:'▲ 3.1%', up:true},
+      {icon:'◎',  bg:'#9945ff', name:'Solana',    sym:'SOL',  price:'$178.20', chg:'▼ 0.5%', up:false},
+      {icon:'▲',  bg:'#e84142', name:'Avalanche', sym:'AVAX', price:'$38.40',  chg:'▲ 2.3%', up:true},
+      {icon:'⟁',  bg:'#12aaff', name:'Arbitrum',  sym:'ARB',  price:'$1.24',   chg:'▼ 1.1%', up:false},
+    ];
+    html += `<div class="card">
+      <div class="card-header"><div class="card-title">Token Prices</div><a href="#" class="card-link">Markets →</a></div>
+      <div>
+      ${prices.map(p => `<div class="price-row">
+        <div class="token-icon" style="background:${p.bg};color:${p.iconColor||'#fff'}">${p.icon}</div>
+        <div style="flex:1"><div class="token-name">${p.name}</div><div class="token-sym">${p.sym}</div></div>
+        <div><div class="token-price">${p.price}</div><div class="token-change ${p.up?'up':'dn'}">${p.chg}</div></div>
+      </div>`).join('')}
+      </div>
+    </div>`;
+  } else {
+    html += `<div class="card testnet-card">
+      <div class="card-header"><div class="card-title">Faucets</div></div>
+      <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:12px;color:var(--muted);line-height:1.6">Get free testnet tokens to build and test your application. All tokens have zero real value.</div>
+        ${CHAINS.testnet.map(c => `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--bg);border-radius:7px;border:1px solid var(--border)">
+          <span style="font-size:12px;font-weight:500">${c.name}</span>
+          <a href="#" style="font-size:11px;padding:3px 10px;border:1px solid var(--testnet);border-radius:5px;color:var(--testnet);text-decoration:none;font-weight:500">Faucet →</a>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  return html;
+}
+
+// ════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════
+switchGroup('main');
+
+// Live block counter
+setInterval(() => {
+  const chain = CHAINS[currentGroup].find(c => c.id === currentChainId);
+  if(!chain) return;
+  const bps = 1 / parseFloat(chain.blockTime);
+  blockCounters[currentChainId] = (blockCounters[currentChainId] || parseInt(chain.block.replace(/,/g,'')));
+  // probabilistic increment
+  if(Math.random() < bps) {
+    blockCounters[currentChainId]++;
+    const el = document.getElementById('blockHeightDisplay');
+    if(el) el.textContent = blockCounters[currentChainId].toLocaleString();
+  }
+}, 1000);
+
+// Row highlight
+setInterval(() => {
+  const rows = document.querySelectorAll('.data-table tbody tr');
+  if(!rows.length) return;
+  const idx = Math.floor(Date.now()/1800) % rows.length;
+  rows.forEach(r => r.style.background = '');
+  if(rows[idx]) {
+    rows[idx].style.background = currentGroup==='cosmos'?'#f3eeff':currentGroup==='testnet'?'#fffbeb':'#f0f4ff';
+    setTimeout(() => { if(rows[idx]) rows[idx].style.background = ''; }, 900);
+  }
+}, 1800);
+</script>
+</body>
+</html>
