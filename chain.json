@@ -1,0 +1,21 @@
+{
+  id:'NAME',           //  lowercase
+  name:'Name Network',
+  sym:'TOKEN',
+  chainId: 99999,           // EVM Chain ID
+  rpcUrl:'https://rpc...',
+  explorer:'https://...',
+  dot:'#aabbcc',            
+  iconBg:'#aabbcc',         
+  icon:'X',                 // caracter icon
+  block:'1,000,000',
+  blockTime:'2.0s',
+  tps:'5.0',
+  gas:'1 Gwei',
+  validators: 10,
+  txDay:'10K',
+  supply:'∞ (faucet)',
+  util:'15.0%',
+  layer:'L1 Testnet',
+  faucet:'https://faucet...',
+},
